@@ -20,7 +20,7 @@ async def on_voice_state_update(member, before, after):
 		await before.channel.delete()
 
 	if after.channel and after.channel.name == join_vc:
-		new_channel = await after.channel.clone(name='-'*26)
+		new_channel = await after.channel.clone(name='-'*25)
 		await member.move_to(new_channel)
 
 CLIENT.run(TOKEN)
