@@ -1,3 +1,3 @@
 #!/bin/bash
-pip install -U discord
-pip install -U python3-dotenv
+pip3 install -U discord
+pip3 install -U python-dotenv
