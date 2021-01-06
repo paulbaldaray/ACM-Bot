@@ -1,0 +1,80 @@
+#!/bin/python3 -u
+import os, discord, dotenv, asyncio, random
+from algorithm_names import algonames
+dotenv.load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+
+INTENTS=discord.Intents.default()
+INTENTS.members = True
+CLIENT = discord.Client(intents=INTENTS)
+
+JOIN_VC = 'join-to-create-chat'
+DEFAULT_VC = '-'*25
+assert(JOIN_VC != DEFAULT_VC and DEFAULT_VC != '')
+
+algonames = list(map(lambda x : 'tmp-'+x, algonames))
+for ALGONAME in algonames:
+	assert(JOIN_VC != ALGONAME and ALGONAME != '')
+
+# race-condition... wcgw
+used_names = set()
+async def get_name():
+	print(f'Names remaining: {len(algonames)-len(used_names)}')
+	for name in random.sample(algonames, k=len(algonames)):
+		if name not in used_names:
+			used_names.add(name)
+			return name
+	return DEFAULT_VC
+
+async def rem_name(name):
+	used_names.discard(name)
+
+async def new_channels(category):
+	name = await get_name()
+	print(f'Creating new channel: {name}')
+	tc = await category.create_text_channel(name)
+	vc = await category.create_voice_channel(name)
+	return tc, vc
+
+async def delete_channels(vc):
+	category, name = vc.category, vc.name
+	for ch in list(category.channels):
+		if ch.name == name:
+			await ch.delete()
+	await rem_name(name)
+
+@CLIENT.event
+async def on_ready():
+	active_channels = []
+
+	print(f'{CLIENT.user} is connected to the following guild(s):')
+	for guild in CLIENT.guilds:
+		print(f'{guild.name}(id: {guild.id})')
+		for vc in list(guild.voice_channels):
+			if vc.name == JOIN_VC and len(vc.members) > 0:
+				active_channels.append(vc)
+			elif vc.name != JOIN_VC and len(vc.members) == 0:
+				await delete_channels(vc)
+
+	for vc in active_channels:
+		if vc.category == None:
+			continue
+		new_tc, new_vc = await new_channels(vc.category)
+		print(f'Moving users:')
+		for member in vc.members:
+			print(member.name)
+			await member.move_to(new_vc)
+
+@CLIENT.event
+async def on_voice_state_update(member, before, after):
+
+	if before.channel\
+			and before.channel.name != JOIN_VC\
+			and len(before.channel.voice_states) == 0:
+		await delete_channels(before.channel)
+
+	if after.channel and after.channel.name == JOIN_VC:
+		new_tc, new_vc = await new_channels(after.channel.category)
+		await member.move_to(new_vc)
+
+CLIENT.run(TOKEN)
