@@ -8,11 +8,12 @@ INTENTS=discord.Intents.default()
 INTENTS.members = True
 CLIENT = discord.Client(intents=INTENTS)
 
+PREFIX = 'tmp-'
 JOIN_VC = 'join-to-create-chat'
 DEFAULT_VC = '-'*25
 assert(JOIN_VC != DEFAULT_VC and DEFAULT_VC != '')
 
-algonames = list(map(lambda x : 'tmp-'+x, algonames))
+algonames = list(map(lambda x : PREFIX+x, algonames))
 for ALGONAME in algonames:
 	assert(JOIN_VC != ALGONAME and ALGONAME != '')
 
@@ -27,6 +28,7 @@ async def get_name():
 	return DEFAULT_VC
 
 async def rem_name(name):
+	print(f'Removing channel: {name}')
 	used_names.discard(name)
 
 async def new_channels(category):
@@ -53,7 +55,7 @@ async def on_ready():
 		for vc in list(guild.voice_channels):
 			if vc.name == JOIN_VC and len(vc.members) > 0:
 				active_channels.append(vc)
-			elif vc.name != JOIN_VC and len(vc.members) == 0:
+			elif vc.name.startswith(PREFIX) and len(vc.members) == 0:
 				await delete_channels(vc)
 
 	for vc in active_channels:
@@ -69,7 +71,7 @@ async def on_ready():
 async def on_voice_state_update(member, before, after):
 
 	if before.channel\
-			and before.channel.name != JOIN_VC\
+			and before.channel.name.startswith(PREFIX)\
 			and len(before.channel.voice_states) == 0:
 		await delete_channels(before.channel)
 
